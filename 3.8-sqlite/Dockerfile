@@ -1,6 +1,6 @@
 # This image provides a Python 3.8 environment you can use to run your Python
 # applications.
-FROM centos/s2i-base-centos7
+FROM registry.fedoraproject.org/f32/s2i-base:latest
 
 EXPOSE 8080
 
@@ -12,6 +12,10 @@ ENV PYTHON_VERSION=3.8 \
     LANG=en_US.UTF-8 \
     PIP_NO_CACHE_DIR=off
 
+
+ENV NAME=python3 \
+    VERSION=0 \
+    ARCH=x86_64
 
 ENV SUMMARY="Platform for building and running Python $PYTHON_VERSION applications" \
     DESCRIPTION="Python $PYTHON_VERSION available as container is a base platform for \
@@ -28,21 +32,18 @@ LABEL summary="$SUMMARY" \
       io.k8s.display-name="Python 3.8" \
       io.openshift.expose-services="8080:http" \
       io.openshift.tags="builder,python,python38,python-38,rh-python38" \
-      com.redhat.component="python38-container" \
-      name="centos/python-38-centos7" \
-      version="1" \
-      usage="s2i build https://github.com/sclorg/s2i-python-container.git --context-dir=3.8/test/setup-test-app/ centos/python-38-centos7 python-sample-app" \
+      com.redhat.component="$NAME" \
+      name="$FGC/$NAME" \
+      version="$VERSION" \
+      usage="s2i build https://github.com/sclorg/s2i-python-container.git --context-dir=3.8/test/setup-test-app/ $FGC/$NAME python-sample-app" \
       maintainer="SoftwareCollections.org <sclorg@redhat.com>"
 
-RUN INSTALL_PKGS="rh-python38 sqlite rh-python38-python-devel rh-python38-python-setuptools rh-python38-python-pip nss_wrapper \
-        httpd24 httpd24-httpd-devel httpd24-mod_ssl httpd24-mod_auth_kerb httpd24-mod_ldap \
-        httpd24-mod_session atlas-devel gcc-gfortran libffi-devel libtool-ltdl enchant" && \
-    yum install -y centos-release-scl && \
-    yum -y --setopt=tsflags=nodocs install --enablerepo=centosplus $INSTALL_PKGS && \
+RUN INSTALL_PKGS="python3 sqlite python3-devel python3-setuptools python3-pip nss_wrapper \
+        httpd httpd-devel atlas-devel gcc-gfortran libffi-devel \
+        libtool-ltdl enchant redhat-rpm-config" && \
+    dnf -y --setopt=tsflags=nodocs install $INSTALL_PKGS && \
     rpm -V $INSTALL_PKGS && \
-    # Remove centos-logos (httpd dependency) to keep image size smaller.
-    rpm -e --nodeps centos-logos && \
-    yum -y clean all --enablerepo='*'
+    dnf -y clean all --enablerepo='*'
 
 # Copy the S2I scripts from the specific language image to $STI_SCRIPTS_PATH.
 COPY ./s2i/bin/ $STI_SCRIPTS_PATH
@@ -56,11 +57,15 @@ COPY ./root/ /
 # - In order to drop the root user, we have to make some directories world
 #   writable as OpenShift default security model is to run the container
 #   under random UID.
-RUN source scl_source enable rh-python38 && \
-    python3.8 -m venv ${APP_ROOT} && \
-    chown -R 1001:0 ${APP_ROOT} && \
-    fix-permissions ${APP_ROOT} -P && \
-    rpm-file-permissions
+RUN python3.8 -m venv ${APP_ROOT} && \
+chown -R 1001:0 ${APP_ROOT} && \
+fix-permissions ${APP_ROOT} -P
+
+# For Fedora scl_enable isn't sourced automatically in s2i-core
+# so virtualenv needs to be activated this way
+ENV BASH_ENV="${APP_ROOT}/bin/activate" \
+    ENV="${APP_ROOT}/bin/activate" \
+    PROMPT_COMMAND=". ${APP_ROOT}/bin/activate"
 
 USER 1001
 
