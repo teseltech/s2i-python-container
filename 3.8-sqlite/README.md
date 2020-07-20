@@ -1,10 +1,11 @@
-Python 3.8 Sqlite container image
-===================
+Python 3.8 SQLite container image
+=================================
 
-Reference the [Python 3.8 container image README.md](../3.8/README.md)
+This is a modification of [s2i-python-fedora](../3.8/README.md) container. Some packages were added to the `INSTALL_PKGS` variable in the Dockerfile.
 
-This is mainly a modification of the `INSTALL_PKGS` variable in the Dockerfile to add dependencies required
+Build normally, but use the tag `darkade/python-38-sqlite-fedora`
 
 ```
-docker build . -t darkade/python-38-sqlite-fedora
+docker build . -t darkade/python-38-sqlite-fedora # build
+docker push darkade/python-38-sqlite-fedora # deploy to docker hub
 ```
